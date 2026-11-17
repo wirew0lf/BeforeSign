@@ -1,0 +1,1 @@
+{"name":"beforesign","private":true,"type":"module","scripts":{"analyze":"tsx packages/core/src/cli.ts","test":"tsx --test packages/core/src/*.test.ts","check":"tsc --noEmit"},"dependencies":{"viem":"^2.0.0"},"devDependencies":{"typescript":"^5.0.0","tsx":"^4.0.0","@types/node":"^22.0.0"}}
