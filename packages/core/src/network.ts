@@ -8,10 +8,14 @@ export const networks: Record<number,{prefix:string;rpc:string;service:string}> 
 };
 export class Fetcher {
  count=0;
+ blocked=new Set<string>();
  constructor(private fetcher:typeof fetch=fetch){}
  async json(url:string,headers:Record<string,string>={}) {
+  const host=new URL(url).hostname;
+  if(this.blocked.has(host))throw Error(`Provider temporarily blocked after rate/server error: ${host}`);
   if(++this.count>30)throw Error('Network request budget exhausted');
-  const response=await this.fetcher(url,{headers,signal:AbortSignal.timeout(15000),redirect:'error'});
+  const response=await this.fetcher(url,{headers:{'User-Agent':'BeforeSign/0.1 (+https://github.com/wirew0lf/BeforeSign)',...headers},signal:AbortSignal.timeout(15000),redirect:'error'});
+  if(response.status===429||response.status>=500)this.blocked.add(host);
   if(!response.ok)throw Error(`HTTP ${response.status} from ${new URL(url).hostname}`);
   if(Number(response.headers.get('content-length'))>2_000_000)throw Error('Response size limit');
   if(!response.body)throw Error('Empty response');

@@ -6,6 +6,7 @@ import { hashes, fields, address, hex } from './transaction.ts';
 import { callTree } from './decode.ts';
 import { networks, Fetcher, resolveProposal } from './network.ts';
 import { source } from './source.ts';
+import { safeState, relevantState } from './state.ts';
 import { proxyPath } from './proxy.ts';
 export { hashes, normalize } from './transaction.ts';
 export { decode } from './decode.ts';
@@ -43,14 +44,16 @@ export async function analyze(input:any, offline=false) {
   }catch{gaps.push(`${to}: proxy/source resolution incomplete`);}
  }
  await lookup(safe);
+ if(block!==undefined) evidence.configuration=await safeState(client,safe,block,gaps);
  const tree=await callTree({to:address(local.message.to),value:local.message.value as bigint,operation:local.message.operation as bigint,data:hex(local.message.data)},lookup,gaps);
+ if(block!==undefined) evidence.tokenState=await relevantState(client,tree.root,safe,block,gaps);
  if(evidence.matches===false)tree.findings.push({severity:'critical',code:'hash-mismatch',detail:'Local and on-chain signing hashes disagree.',path:'0'});
  const proposalHash=input.proposalHash??input.safeTxHash;
  if(proposalHash&&(!/^0x[0-9a-fA-F]{64}$/.test(proposalHash)||proposalHash.toLowerCase()!==local.hash.toLowerCase()))tree.findings.push({severity:'critical',code:'proposal-hash-mismatch',detail:'Supplied proposal hash disagrees with locally computed hash.',path:'0'});
  if(evidence.nonce!==undefined&&evidence.nonce!==local.message.nonce)tree.findings.push({severity:'warning',code:'nonce-difference',detail:'Proposal nonce differs from current Safe nonce; queued or stale transaction.',path:'0'});
  if(local.message.gasPrice!==0n)tree.findings.push({severity:'warning',code:'gas-refund',detail:'Transaction authorizes a gas refund; review gas fields, gas token and refund receiver.',path:'0'});
  if(block!==undefined)try{const end=await client.getBlock({blockNumber:block});if(end.hash!==evidence.blockHash)gaps.push('Snapshot block changed during analysis; rerun required');}catch{gaps.push('Snapshot stability check failed');}
- return {chainId,safe,transaction:local.message,signing:{safeTransactionHash:local.hash,domainSeparator:local.domainSeparator,structHash:local.structHash,versionSupported:verified,crossChecked:evidence.matches===true,status:verified&&evidence.matches===true?'cross-checked':'provisional'},evidence,...tree,sources,gaps,warning:'No simulation or safety guarantee. Source verification is provider evidence. Unrecognized proxy patterns and dynamic calls require manual review. Device display depends on signing method.'};
+ return {chainId,safe,transaction:local.message,signing:{safeTransactionHash:local.hash,domainSeparator:local.domainSeparator,structHash:local.structHash,versionSupported:verified,crossChecked:verified&&evidence.matches===true,status:verified&&evidence.matches===true?'cross-checked':'provisional'},evidence,...tree,sources,gaps,warning:'No simulation or safety guarantee. Source verification is provider evidence. Unrecognized proxy patterns and dynamic calls require manual review. Device display depends on signing method.'};
 }
 async function main(){
  const args=process.argv.slice(2);const offline=args.includes('--offline');const value=args.find(a=>a!=='--offline');
