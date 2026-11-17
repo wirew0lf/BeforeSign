@@ -32,7 +32,7 @@ export function proposalLocation(link:string) {
 }
 export async function resolveProposal(link:string,fetcher:Fetcher){
  const p=proposalLocation(link);const key=process.env.SAFE_API_KEY;
- const data=await fetcher.json(`${networks[p.chainId].service}/api/v1/multisig-transactions/${p.hash}/`,key?{Authorization:`Bearer ${key}`} : {});
+ const data=await fetcher.json(`https://api.safe.global/tx-service/${networks[p.chainId].prefix}/api/v1/multisig-transactions/${p.hash}/`,key?{Authorization:`Bearer ${key}`} : {});
  if(data.safe?.toLowerCase()!==p.safe.toLowerCase()||data.safeTxHash?.toLowerCase()!==p.hash.toLowerCase())throw Error('Proposal service identifiers disagree with link');
  return {...data,chainId:p.chainId,safe:p.safe,proposalHash:p.hash};
 }
